@@ -1,4 +1,4 @@
-package com.hanson.wechat;
+package com.hanson.wechat.utils;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;

@@ -1,4 +1,4 @@
-package com.hanson.wechat;
+package com.hanson.wechat.utils;
 
 import com.google.zxing.*;
 import com.google.zxing.common.BitMatrix;
