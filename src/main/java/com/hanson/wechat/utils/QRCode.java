@@ -3,6 +3,7 @@ package com.hanson.wechat.utils;
 import com.google.zxing.*;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
+import com.sun.org.apache.xml.internal.serializer.OutputPropertyUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -46,6 +47,27 @@ public class QRCode {
             e.printStackTrace();
         }
 
+    }
+
+    public void createCode(OutputStream outputStream,String text){
+        int width = 300;
+        int height = 300;
+        // 二维码的图片格式
+        String format = "png";
+        /**
+         * 设置二维码的参数
+         */
+        HashMap hints = new HashMap();
+        // 内容所使用编码
+        hints.put(EncodeHintType.CHARACTER_SET, "utf-8");
+        try {
+            BitMatrix bitMatrix = new MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE,width,height,hints);
+            // 生成二维码
+            MatrixToImageWriter.writeToStream(bitMatrix, format,outputStream);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     /**
      * 二维码的解析

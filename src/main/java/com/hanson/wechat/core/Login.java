@@ -1,4 +1,4 @@
-package com.hanson.wechat.com.hanson.wechat.core;
+package com.hanson.wechat.core;
 
 
 import com.alibaba.fastjson.JSON;
@@ -17,6 +17,7 @@ import org.dom4j.DocumentException;
 
 import javax.swing.*;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -24,7 +25,7 @@ import java.util.Random;
 /**
  * Created by hanson on 2017/1/11.
  */
-public class Login {
+public class Login implements  Runnable{
 
     private HttpClient2 client = null;
     private String baseUrl = null;
@@ -39,6 +40,8 @@ public class Login {
     private String msgId;
     private JSONObject user;
     private JSONObject syncKey;
+    private Map<String,String> friendMap;
+    private String appId;
 
     public Login() {
         client = new HttpClient2();
@@ -47,8 +50,17 @@ public class Login {
 
     }
 
-    public String getUUID(Map<String, String> params) throws IOException {
+    public String getUUID() throws IOException {
         String url = "https://login.weixin.qq.com/jslogin";
+
+        Map<String, String> params = new HashMap<String, String>();
+        params.put("appid", "wx782c26e4c19acffb");
+        params.put("fun", "new");
+        params.put("lang", "zh_CN");
+
+        Random random = new Random();
+        long radomCode = System.currentTimeMillis() + 1 + random.nextInt(999);
+        params.put("_", radomCode + "");
 
         NameValuePair[] pair = new NameValuePair[params.size()];
         int i = 0;
@@ -80,6 +92,11 @@ public class Login {
         frame.setVisible(true);
 
     }
+    public void generateQRCode(String uuid, OutputStream outputStream){
+        String url = "https://login.weixin.qq.com/l/" + uuid;
+        QRCode qrcode = new QRCode();
+        qrcode.createCode(outputStream,url);
+    }
 
     public String wait4Login(String uuid) throws InterruptedException {
         String loginTemp = "https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=%s&uuid=%s&_=%s";
@@ -99,6 +116,7 @@ public class Login {
                     String dirUrl = map.get("window.redirect_uri");
                     String tmp = dirUrl.substring(8);
                     baseHost = tmp.substring(0, tmp.indexOf("/"));
+                    syncHost = "webpush." + baseHost;
                     baseUrl = dirUrl.substring(0, dirUrl.lastIndexOf("/"));
                     return dirUrl + "&fun=new";
                 }
@@ -121,24 +139,6 @@ public class Login {
         uin = map.get("wxuin");
         passTicket = map.get("pass_ticket");
         return true;
-    }
-
-    public JSONObject snycMessage() throws IOException {
-        String url = baseUrl + "/webwxsync?sid=%s&skey=%s&lang=en_US&pass_ticket=%s";
-
-        JSONObject baseRequest = new JSONObject();
-        baseRequest.put("Uin", uin);
-        baseRequest.put("Sid", sid);
-        baseRequest.put("Skey", skey);
-        baseRequest.put("DeviceID", device_id);
-
-        JSONObject params = new JSONObject();
-        params.put("BaseRequest", baseRequest);
-        params.put("rr", System.currentTimeMillis() / 1000);
-
-        String body = "";
-        JSONObject jsonBody = JSON.parseObject(body);
-        return jsonBody;
     }
 
     public int[] syncCheck() throws IOException {
@@ -258,6 +258,7 @@ public class Login {
         }
     }
 
+
     public String generateSyncKeyString(JSONArray synKey) {
         String ans = null;
 
@@ -296,7 +297,7 @@ public class Login {
         params.put("rr", System.currentTimeMillis() / 1000);
 
         String msg = client.post(url, params);
-        System.out.println(msg);
+//        System.out.println(msg);
         JSONObject ret = JSON.parseObject(msg);
 
         JSONObject syncKey = ret.getJSONObject("SyncKey");
@@ -308,9 +309,32 @@ public class Login {
         return msg;
     }
 
-    public void getContact(){
-        String urlString = "https://" + syncHost + "/cgi-bin/mmwebwx-bin/webwxbatchgetcontact?lang=zh_CN&ype=ex&skey=%s&r=%s";
-        String url = String.format(urlString,passTicket,skey,System.currentTimeMillis()/1000+"");
+    public boolean getContact(){
+        String url = baseUrl + "/webwxgetcontact?pass_ticket=%s&skey=%s&r=%s";
+        url = String.format(url,passTicket,skey,System.currentTimeMillis()/1000+"");
+        try {
+            String  ret = client.post(url,null);
+            JSONObject contact = JSON.parseObject(ret);
+            int amount = contact.getInteger("MemberCount");
+            JSONArray array = contact.getJSONArray("MemberList");
+            friendMap = new HashMap<String, String>();
+            for (int i=0;i<array.size();i++) {
+                JSONObject member = array.getJSONObject(i);
+                String userName = member.getString("UserName");
+                String remarkName = member.getString("RemarkName");
+                if(remarkName==null||"".equals(remarkName)){
+                    continue;
+                }
+                friendMap.put(userName,remarkName);
+            }
+            System.out.println(ret);
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
+    }
+
+    public void getBigContent(){
 
     }
 
@@ -329,10 +353,12 @@ public class Login {
 
         params.put("BaseRequest",baseRequest);
 
+        params.put("Scene",0);
+
         JSONObject msg = new JSONObject();
         msg.put("Type",1);
         msg.put("Content",content);
-        msg.put("FromUserName",user.getString(""));
+        msg.put("FromUserName",user.getString("UserName"));
         msg.put("ToUserName",uid);
         msg.put("LocalID",msgId);
         msg.put("ClientMsgId",msgId);
@@ -347,16 +373,7 @@ public class Login {
     public static void main(String args[]) {
         Login login = new Login();
         try {
-            Map<String, String> params = new HashMap<String, String>();
-            params.put("appid", "wx782c26e4c19acffb");
-            params.put("fun", "new");
-            params.put("lang", "zh_CN");
-
-            Random random = new Random();
-            long radomCode = System.currentTimeMillis() + 1 + random.nextInt(999);
-            params.put("_", radomCode + "");
-
-            String uuid = login.getUUID(params);
+            String uuid = login.getUUID();
             System.out.println(uuid);
 
             login.generateQRCode(uuid);
@@ -365,7 +382,9 @@ public class Login {
             login.login(dirUrl);
             login.init();
             login.statusNotify();
-            login.procMsg();
+            login.getContact();
+            new Thread(login).start();
+    //        login.procMsg();
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -376,4 +395,40 @@ public class Login {
         }
     }
 
+    public  void getReply(String msg){
+    }
+
+    public void run() {
+        TuLingReply reply = new TuLingReply();
+        while (true) {
+            try {
+                long checkTime = System.currentTimeMillis() / 1000;
+                int ret[] = syncCheck();
+                System.out.println("retcode:" + ret[0] + " selector:" + ret[1]);
+                if (ret[0] == 0) {
+                    switch (ret[1]) {
+                        case 7:
+                        case 2:
+                        case 6:
+                            String msg = null;
+                            msg = sync();
+//                            System.out.println(msg);
+                             getReply(msg);
+//                            sendMessage(ans.getString("uid"),ans.getString("content"));
+                            break;
+                    }
+
+                } else if (ret[0] == 1100) {
+
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
