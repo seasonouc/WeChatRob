@@ -7,20 +7,27 @@ import com.hanson.wechat.utils.HttpClient2;
 import org.dom4j.DocumentException;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Created by hanson on 2017/1/14.
  */
-public class TuLingReply extends Login{
+public class TuLingReply extends WXBot {
 
     private HttpClient2 client = null;
     private final String url = "http://www.tuling123.com/openapi/api";
     private final String key = "b4ac2b1c72c512584db5322dbd6011a4";
     private final String userid = "season_ouc@126.com";
+    private String setBack ;
 
+    private Set<String> replySet = null;
 
     public TuLingReply(){
+        super();
         client = new HttpClient2();
+        replySet = new HashSet<String>();
+        setBack = "[我是神经病]";
     }
 
     private JSONObject getBaseRequest(){
@@ -36,7 +43,7 @@ public class TuLingReply extends Login{
             String uuid = reply.getUUID();
             System.out.println(uuid);
 
-            reply.generateQRCode(uuid);
+            reply.generateQRCode(null);
             String dirUrl = reply.wait4Login(uuid);
             System.out.println(dirUrl);
             reply.login(dirUrl);
@@ -69,22 +76,36 @@ public class TuLingReply extends Login{
                 int msgType = obj.getInteger("MsgType");
                 switch(msgType){
                     case 37:{
-                        //frient request
-                        String uid = obj.getString("FromUserName");
-                        String callBack = getTulingReply(msg,uid);
-                        try {
-                            sendMessage(uid, callBack);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+
+                        break;
                     }
                     case 1:{
                         //group message
+                        String callBack =  null;
                         String uid = obj.getString("FromUserName");
-                        String callBack = getTulingReply(content, uid);
+                        if(uid.equals(user.getString("UserName"))){
+                            if(content.contains("开启")){
+                                replySet.add(obj.getString("ToUserName"));
+                                callBack = "机器人已开启";
+                                uid = obj.getString("ToUserName");
+                            }else if(content.contains("关闭")){
+                                replySet.remove(obj.getString("ToUserName"));
+                                callBack = "机器人已关闭";
+                                uid = obj.getString("ToUserName");
+                            }else if(content.contains("设置昵称")){
+                                setBack = content.replace("设置昵称","");
+                            }
+
+                        }else if(replySet.contains(uid)){
+                            callBack = getTulingReply(content, uid);
+                        }else{
+                            continue;
+                        }
                         if (callBack == null) {
                             continue;
                         }
+                        System.out.println(callBack);
+                        callBack += setBack;
                         ans.put("uid", uid);
                         ans.put("content", callBack);
                         try {

@@ -11,11 +11,13 @@ import com.alibaba.fastjson.JSONObject;
 import com.hanson.wechat.utils.HttpClient2;
 import com.hanson.wechat.utils.QRCode;
 import com.hanson.wechat.utils.Utils;
+import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.util.EncodingUtil;
 import org.dom4j.DocumentException;
 
 import javax.swing.*;
+import java.awt.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
@@ -25,7 +27,7 @@ import java.util.Random;
 /**
  * Created by hanson on 2017/1/11.
  */
-public class Login implements  Runnable{
+public class WXBot implements  Runnable{
 
     private HttpClient2 client = null;
     private String baseUrl = null;
@@ -37,18 +39,27 @@ public class Login implements  Runnable{
     private String device_id;
     private String syncKeyStr;
     private String passTicket;
-    private String msgId;
-    private JSONObject user;
+    protected JSONObject user;
     private JSONObject syncKey;
     private Map<String,String> friendMap;
-    private String appId;
+//    private OutputStream outputStream = null;
+    private String uuid = null;
 
-    public Login() {
+    public WXBot() {
         client = new HttpClient2();
         Random random = new Random();
-        device_id = "e" + (random.nextDouble() + "").substring(2, 17);
-
+        StringBuffer sb = new StringBuffer();
+        sb.append("e");
+        for(int i = 0;i<15;i++){
+            sb.append(random.nextInt(10));
+        }
+        device_id = sb.toString();
     }
+
+//    public WXBot(OutputStream outputStream){
+//        this();
+//        this.outputStream = outputStream;
+//    }
 
     public String getUUID() throws IOException {
         String url = "https://login.weixin.qq.com/jslogin";
@@ -74,29 +85,35 @@ public class Login implements  Runnable{
 
         String body = client.get(url + "?" + paramString);
         Map<String, String> map = Utils.resolveResult(body);
-        return map.get("window.QRLogin.uuid");
+        uuid = map.get("window.QRLogin.uuid");
+        return uuid;
     }
 
-    public void generateQRCode(String uuid) {
+    public void generateQRCode(OutputStream outputStream) {
 
         String url = "https://login.weixin.qq.com/l/" + uuid;
-        String path = Login.class.getClassLoader().getResource("//").getPath() + "qrcode.png";
+        String path = WXBot.class.getClassLoader().getResource("//").getPath() + "qrcode.png";
         QRCode qrcode = new QRCode();
-        qrcode.createCode(path, url);
-        JFrame frame = new JFrame();
-        frame.setSize(400, 400);
-        ImageIcon imageIcon = new ImageIcon(path);
-        JLabel label = new JLabel();
-        label.setIcon(imageIcon);
-        frame.add(label);
-        frame.setVisible(true);
+        if(outputStream == null){
+            qrcode.createCode(path, url);
+            JFrame frame = new JFrame();
+            frame.setSize(400, 400);
+            ImageIcon imageIcon = new ImageIcon(path);
+            JLabel label = new JLabel();
+            label.setIcon(imageIcon);
+            frame.add(label);
+            frame.setVisible(true);
+        }else{
+            qrcode.createCode(outputStream,url);
+        }
+
 
     }
-    public void generateQRCode(String uuid, OutputStream outputStream){
-        String url = "https://login.weixin.qq.com/l/" + uuid;
-        QRCode qrcode = new QRCode();
-        qrcode.createCode(outputStream,url);
-    }
+//    public void generateQRCode(String uuid, OutputStream outputStream){
+//        String url = "https://login.weixin.qq.com/l/" + uuid;
+//        QRCode qrcode = new QRCode();
+//        qrcode.createCode(outputStream,url);
+//    }
 
     public String wait4Login(String uuid) throws InterruptedException {
         String loginTemp = "https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=%s&uuid=%s&_=%s";
@@ -107,9 +124,8 @@ public class Login implements  Runnable{
             Thread.sleep(3000);
             retryTime--;
 
-            String body = null;
             try {
-                body = client.get(url);
+                String body = client.get(url);
                 Map<String, String> map = Utils.resolveResult(body);
 
                 if ("200".equals(map.get("window.code"))) {
@@ -164,7 +180,7 @@ public class Login implements  Runnable{
         String paramString = EncodingUtil.formUrlEncode(pair, "utf8");
 
         String url = "https://" + syncHost + "/cgi-bin/mmwebwx-bin/synccheck?" + paramString;
-        System.out.println("check url:" + url);
+//        System.out.println("check url:" + url);
 
         String body = client.get(url);
         Map<String, String> map = Utils.resolveResult(body);
@@ -203,7 +219,7 @@ public class Login implements  Runnable{
         String url = String.format(baseUrl + "/webwxstatusnotify?lang=zh_CN&pass_ticket=%s", passTicket);
 
         JSONObject baseRequest = new JSONObject();
-        baseRequest.put("Uin", Integer.parseInt(uin));
+        baseRequest.put("Uin", uin);
         baseRequest.put("Sid", sid);
         baseRequest.put("Skey", skey);
         baseRequest.put("DeviceID", device_id);
@@ -219,48 +235,7 @@ public class Login implements  Runnable{
         System.out.println("statusNotify result:" + body);
     }
 
-    public void testSyncCheck() {
-//        String []hosts = {"webpush.","webpush2."};
-//        for(String host:hosts){
-        syncHost = "webpush." + baseHost;
-//            try {
-//                syncCheck();
-//                if("0".equals(retCode)){
-//                    return;
-//                }
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-    }
-
-
-    public void procMsg() throws IOException, InterruptedException {
-        testSyncCheck();
-        while (true) {
-            long checkTime = System.currentTimeMillis() / 1000;
-            int ret[] = syncCheck();
-            System.out.println("retcode:" + ret[0] + " selector:" + ret[1]);
-            if(ret[0] == 0){
-                switch(ret[1]){
-                    case 7:
-                    case 2:
-                        String msg = sync();
-                        System.out.println(msg);
-                        break;
-                }
-
-            }else if(ret[0] == 1100){
-
-            }
-
-            Thread.sleep(2000);
-        }
-    }
-
-
     public String generateSyncKeyString(JSONArray synKey) {
-        String ans = null;
 
         StringBuffer sb = new StringBuffer();
         for (int i = 0; i < synKey.size(); i++) {
@@ -271,13 +246,10 @@ public class Login implements  Runnable{
             if (i < synKey.size() - 1)
                 sb.append("|");
         }
-        ans = sb.toString();
-        return ans;
+        return sb.toString();
     }
 
     public String sync() throws IOException {
-//        String url = String.format(baseUrl + "/webwxsync?sid=%s&skey=%s&lang=zh_CN&pass_ticket=%s", sid, skey, passTicket);
-
         NameValuePair pair[] = new NameValuePair[3];
         pair[0] = new NameValuePair("sid",sid);
         pair[1]=  new NameValuePair("skey",skey);
@@ -297,7 +269,6 @@ public class Login implements  Runnable{
         params.put("rr", System.currentTimeMillis() / 1000);
 
         String msg = client.post(url, params);
-//        System.out.println(msg);
         JSONObject ret = JSON.parseObject(msg);
 
         JSONObject syncKey = ret.getJSONObject("SyncKey");
@@ -334,10 +305,6 @@ public class Login implements  Runnable{
         return true;
     }
 
-    public void getBigContent(){
-
-    }
-
     public void sendMessage(String uid,String content) throws IOException {
         String url = baseUrl + String.format("/webwxsendmsg?pass_ticket=%s",passTicket);
         Random random = new Random();
@@ -370,39 +337,38 @@ public class Login implements  Runnable{
     }
 
 
-    public static void main(String args[]) {
-        Login login = new Login();
-        try {
-            String uuid = login.getUUID();
-            System.out.println(uuid);
-
-            login.generateQRCode(uuid);
-            String dirUrl = login.wait4Login(uuid);
-            System.out.println(dirUrl);
-            login.login(dirUrl);
-            login.init();
-            login.statusNotify();
-            login.getContact();
-            new Thread(login).start();
-    //        login.procMsg();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (DocumentException e) {
-            e.printStackTrace();
-        }
-    }
 
     public  void getReply(String msg){
     }
 
     public void run() {
-        TuLingReply reply = new TuLingReply();
+
+        try {
+//            String uuid = getUUID();
+//            System.out.println(uuid);
+//
+//            generateQRCode(uuid);
+            String dirUrl = wait4Login(uuid);
+            System.out.println(dirUrl);
+            if(dirUrl == null){
+                return;
+            }
+            login(dirUrl);
+            init();
+            statusNotify();
+            getContact();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return;
+        } catch (DocumentException e) {
+            e.printStackTrace();
+            return;
+        }
         while (true) {
             try {
-                long checkTime = System.currentTimeMillis() / 1000;
                 int ret[] = syncCheck();
                 System.out.println("retcode:" + ret[0] + " selector:" + ret[1]);
                 if (ret[0] == 0) {
@@ -410,25 +376,47 @@ public class Login implements  Runnable{
                         case 7:
                         case 2:
                         case 6:
-                            String msg = null;
-                            msg = sync();
-//                            System.out.println(msg);
-                             getReply(msg);
-//                            sendMessage(ans.getString("uid"),ans.getString("content"));
+                            String msg = sync();
+                            getReply(msg);
                             break;
                     }
 
                 } else if (ret[0] == 1100) {
-
+                    break;
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
             try {
-                Thread.sleep(2000);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
+//
+//    public static void main(String args[]) {
+//        WXBot login = new WXBot();
+//        try {
+//            String uuid = login.getUUID();
+//            System.out.println(uuid);
+//
+//            login.generateQRCode(uuid);
+//            String dirUrl = login.wait4Login(uuid);
+//            System.out.println(dirUrl);
+//            login.login(dirUrl);
+//            login.init();
+//            login.statusNotify();
+//            login.getContact();
+//            new Thread(login).start();
+//            //        login.procMsg();
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        } catch (DocumentException e) {
+//            e.printStackTrace();
+//        }
+//    }
 }
