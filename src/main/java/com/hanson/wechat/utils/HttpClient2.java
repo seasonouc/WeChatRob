@@ -16,11 +16,30 @@ public class HttpClient2 {
     private HttpClient client = null;
 
     private HttpState state = null;
+
+    static {
+        System.setProperty("jsse.enableSNIExtension","false");
+    }
+
+    public static HttpClient2 instance = null;
+
+    public static HttpClient2 getInstance(){
+        if(instance ==  null){
+            synchronized (HttpClient2.class){
+                if(instance == null){
+                    instance = new HttpClient2();
+                }
+            }
+
+        }
+        return instance;
+    }
+
     public HttpClient2(){
         client = new HttpClient();
         state = new HttpState();
         client.setState(state);
-        client.getParams().setConnectionManagerTimeout(1000L);
+//        client.getParams().setConnectionManagerTimeout(1000L);
     }
 
     public String post(String url, JSONObject params) throws IOException {
@@ -34,7 +53,7 @@ public class HttpClient2 {
         method.addRequestHeader(header3);
         client.executeMethod(method);
         byte[] body = method.getResponseBody();
-
+        method.releaseConnection();
         String ans = new String(body,"utf8");
         return ans;
     }
@@ -45,6 +64,7 @@ public class HttpClient2 {
         method.addRequestHeader(header3);
         client.executeMethod(method);
         byte[] body = method.getResponseBody();
+        method.releaseConnection();
         String ans = new String(body,"utf8");
         return ans;
     }

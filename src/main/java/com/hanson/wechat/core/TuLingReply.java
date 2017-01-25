@@ -5,6 +5,8 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.hanson.wechat.utils.HttpClient2;
 import org.dom4j.DocumentException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -23,11 +25,13 @@ public class TuLingReply extends WXBot {
 
     private Set<String> replySet = null;
 
+    private final static Logger LOG = LoggerFactory.getLogger(TuLingReply.class);
     public TuLingReply(){
         super();
         client = new HttpClient2();
+//        client =  HttpClient2.getInstance();
         replySet = new HashSet<String>();
-        setBack = "[我是神经病]";
+        setBack = "[阿微]";
     }
 
     private JSONObject getBaseRequest(){
@@ -74,6 +78,7 @@ public class TuLingReply extends WXBot {
                 JSONObject obj = msgList.getJSONObject(i);
                 String content = obj.getString("Content");
                 int msgType = obj.getInteger("MsgType");
+                LOG.info("toUser:{} message type:{},content:{}",user.getString("UserName"),msgType,content);
                 switch(msgType){
                     case 37:{
 
@@ -104,6 +109,7 @@ public class TuLingReply extends WXBot {
                         if (callBack == null) {
                             continue;
                         }
+                        LOG.info("call back:{}",callBack);
                         System.out.println(callBack);
                         callBack += setBack;
                         ans.put("uid", uid);
@@ -111,6 +117,7 @@ public class TuLingReply extends WXBot {
                         try {
                             sendMessage(uid, callBack);
                         } catch (IOException e) {
+                            LOG.error("error:{}",e.getCause());
                             e.printStackTrace();
                         }
                     }
@@ -134,6 +141,7 @@ public class TuLingReply extends WXBot {
                 return reply.getString("text").replace("<br>","").replace("\\xa0", "" );
             }
         } catch (IOException e) {
+            LOG.error("error:{}",e.getCause());
             e.printStackTrace();
         }
         return null;

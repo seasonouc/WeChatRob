@@ -4,20 +4,16 @@ package com.hanson.wechat.core;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-//import org.apache.commons.httpclient.*;
-//import org.apache.commons.httpclient.methods.GetMethod;
-//import org.apache.commons.httpclient.methods.PostMethod;
-//import org.apache.commons.httpclient.methods.StringRequestEntity;
 import com.hanson.wechat.utils.HttpClient2;
 import com.hanson.wechat.utils.QRCode;
 import com.hanson.wechat.utils.Utils;
-import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.util.EncodingUtil;
 import org.dom4j.DocumentException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
-import java.awt.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
@@ -42,11 +38,13 @@ public class WXBot implements  Runnable{
     protected JSONObject user;
     private JSONObject syncKey;
     private Map<String,String> friendMap;
-//    private OutputStream outputStream = null;
     private String uuid = null;
+
+    private final static Logger LOG = LoggerFactory.getLogger(WXBot.class);
 
     public WXBot() {
         client = new HttpClient2();
+//        client = HttpClient2.getInstance();
         Random random = new Random();
         StringBuffer sb = new StringBuffer();
         sb.append("e");
@@ -55,11 +53,6 @@ public class WXBot implements  Runnable{
         }
         device_id = sb.toString();
     }
-
-//    public WXBot(OutputStream outputStream){
-//        this();
-//        this.outputStream = outputStream;
-//    }
 
     public String getUUID() throws IOException {
         String url = "https://login.weixin.qq.com/jslogin";
@@ -86,6 +79,8 @@ public class WXBot implements  Runnable{
         String body = client.get(url + "?" + paramString);
         Map<String, String> map = Utils.resolveResult(body);
         uuid = map.get("window.QRLogin.uuid");
+
+        LOG.debug("get uuid:" + uuid);
         return uuid;
     }
 
@@ -106,14 +101,9 @@ public class WXBot implements  Runnable{
         }else{
             qrcode.createCode(outputStream,url);
         }
-
+        LOG.debug("generate qrcode");
 
     }
-//    public void generateQRCode(String uuid, OutputStream outputStream){
-//        String url = "https://login.weixin.qq.com/l/" + uuid;
-//        QRCode qrcode = new QRCode();
-//        qrcode.createCode(outputStream,url);
-//    }
 
     public String wait4Login(String uuid) throws InterruptedException {
         String loginTemp = "https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=%s&uuid=%s&_=%s";
@@ -180,7 +170,6 @@ public class WXBot implements  Runnable{
         String paramString = EncodingUtil.formUrlEncode(pair, "utf8");
 
         String url = "https://" + syncHost + "/cgi-bin/mmwebwx-bin/synccheck?" + paramString;
-//        System.out.println("check url:" + url);
 
         String body = client.get(url);
         Map<String, String> map = Utils.resolveResult(body);
@@ -209,7 +198,7 @@ public class WXBot implements  Runnable{
 
         syncKey = json.getJSONObject("SyncKey");
         user = json.getJSONObject("User");
-
+        LOG.info("user onLine:{}",user);
         syncKeyStr = generateSyncKeyString(syncKey.getJSONArray("List"));
         System.out.println("syncKeyStr:" + syncKeyStr);
     }
@@ -358,19 +347,22 @@ public class WXBot implements  Runnable{
             statusNotify();
             getContact();
         } catch (IOException e) {
+            LOG.error("error:{}",e.getCause());
             e.printStackTrace();
             return;
         } catch (InterruptedException e) {
+            LOG.error("error:{}",e.getCause());
             e.printStackTrace();
             return;
         } catch (DocumentException e) {
+            LOG.error("error:{}",e.getCause());
             e.printStackTrace();
             return;
         }
         while (true) {
             try {
                 int ret[] = syncCheck();
-                System.out.println("retcode:" + ret[0] + " selector:" + ret[1]);
+//                System.out.println("retcode:" + ret[0] + " selector:" + ret[1]);
                 if (ret[0] == 0) {
                     switch (ret[1]) {
                         case 7:
@@ -382,15 +374,20 @@ public class WXBot implements  Runnable{
                     }
 
                 } else if (ret[0] == 1100) {
+                    LOG.info("user offline,user info:{}",user);
                     break;
                 }
             } catch (IOException e) {
+                LOG.error("error:{}",e.getCause());
                 e.printStackTrace();
+                break;
             }
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
+                LOG.error("error:{}",e.getCause());
                 e.printStackTrace();
+                break;
             }
         }
     }
