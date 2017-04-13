@@ -118,7 +118,7 @@
 <div id="contact-us">
     <h4>扫描下方微信联系作者留言你想要的功能，我们会在第一时间做出来</h4>
     <p>
-        <img src="/assets/img/myweixin.jpg" class="imageApt"/>
+        <img src="/assets/img/myweixin.jpg" style="display:block;width:50%;"/>
     </p>
 </div>
 
