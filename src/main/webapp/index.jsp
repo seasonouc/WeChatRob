@@ -8,7 +8,7 @@
     <!--[if IE]>
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <![endif]-->
-    <title>SIDE MENU STYLE TEMPLATE</title>
+    <title>微信机器人</title>
     <!-- BOOTSTRAP CORE STYLE -->
     <link href="assets/css/bootstrap.css" rel="stylesheet"/>
     <!-- FONT AWESOME ICONS STYLE -->
@@ -51,7 +51,7 @@
         <div class="container">
             <div class="row text-center">
                 <div class="col-md-8 col-md-offset-2">
-                    <h2>扫描或识别下面的二维码登录微信机器人</h2>
+                    <h2>用摄像头扫描下面的二维码登录微信机器人</h2>
                     <p>
                         <img src="getQRCode.do" class="imageApt" alt="扫描"/>
                     </p>
