@@ -23,7 +23,7 @@ import java.util.Random;
 /**
  * Created by hanson on 2017/1/11.
  */
-public class WXBot implements  Runnable{
+public class WXBot implements Runnable {
 
     private HttpClient2 client = null;
     private String baseUrl = null;
@@ -37,18 +37,17 @@ public class WXBot implements  Runnable{
     private String passTicket;
     protected JSONObject user;
     private JSONObject syncKey;
-    private Map<String,String> friendMap;
+    private Map<String, String> friendMap;
     private String uuid = null;
 
     private final static Logger LOG = LoggerFactory.getLogger(WXBot.class);
 
     public WXBot() {
         client = new HttpClient2();
-//        client = HttpClient2.getInstance();
         Random random = new Random();
         StringBuffer sb = new StringBuffer();
         sb.append("e");
-        for(int i = 0;i<15;i++){
+        for (int i = 0; i < 15; i++) {
             sb.append(random.nextInt(10));
         }
         device_id = sb.toString();
@@ -89,7 +88,7 @@ public class WXBot implements  Runnable{
         String url = "https://login.weixin.qq.com/l/" + uuid;
         String path = WXBot.class.getClassLoader().getResource("//").getPath() + "qrcode.png";
         QRCode qrcode = new QRCode();
-        if(outputStream == null){
+        if (outputStream == null) {
             qrcode.createCode(path, url);
             JFrame frame = new JFrame();
             frame.setSize(400, 400);
@@ -98,8 +97,8 @@ public class WXBot implements  Runnable{
             label.setIcon(imageIcon);
             frame.add(label);
             frame.setVisible(true);
-        }else{
-            qrcode.createCode(outputStream,url);
+        } else {
+            qrcode.createCode(outputStream, url);
         }
         LOG.debug("generate qrcode");
 
@@ -177,7 +176,7 @@ public class WXBot implements  Runnable{
         JSONObject json = JSON.parseObject(map.get("window.synccheck"));
         int retCode = json.getInteger("retcode");
         int selector = json.getInteger("selector");
-        int ans[] = {retCode,selector};
+        int ans[] = {retCode, selector};
         return ans;
     }
 
@@ -198,7 +197,7 @@ public class WXBot implements  Runnable{
 
         syncKey = json.getJSONObject("SyncKey");
         user = json.getJSONObject("User");
-        LOG.info("user onLine:{}",user);
+        LOG.info("user onLine:{}", user);
         syncKeyStr = generateSyncKeyString(syncKey.getJSONArray("List"));
         System.out.println("syncKeyStr:" + syncKeyStr);
     }
@@ -240,10 +239,10 @@ public class WXBot implements  Runnable{
 
     public String sync() throws IOException {
         NameValuePair pair[] = new NameValuePair[3];
-        pair[0] = new NameValuePair("sid",sid);
-        pair[1]=  new NameValuePair("skey",skey);
-        pair[2] =new NameValuePair("pass_ticket",passTicket);
-        String url = baseUrl+ "/webwxsync?lang=zh_CN&"+EncodingUtil.formUrlEncode(pair,"utf8");
+        pair[0] = new NameValuePair("sid", sid);
+        pair[1] = new NameValuePair("skey", skey);
+        pair[2] = new NameValuePair("pass_ticket", passTicket);
+        String url = baseUrl + "/webwxsync?lang=zh_CN&" + EncodingUtil.formUrlEncode(pair, "utf8");
 
         JSONObject params = new JSONObject();
 
@@ -262,30 +261,30 @@ public class WXBot implements  Runnable{
 
         JSONObject syncKey = ret.getJSONObject("SyncKey");
         String syncKeyStr = generateSyncKeyString(syncKey.getJSONArray("List"));
-        if(syncKey.getInteger("Count") >0 ){
+        if (syncKey.getInteger("Count") > 0) {
             this.syncKey = syncKey;
             this.syncKeyStr = syncKeyStr;
         }
         return msg;
     }
 
-    public boolean getContact(){
+    public boolean getContact() {
         String url = baseUrl + "/webwxgetcontact?pass_ticket=%s&skey=%s&r=%s";
-        url = String.format(url,passTicket,skey,System.currentTimeMillis()/1000+"");
+        url = String.format(url, passTicket, skey, System.currentTimeMillis() / 1000 + "");
         try {
-            String  ret = client.post(url,null);
+            String ret = client.post(url, null);
             JSONObject contact = JSON.parseObject(ret);
             int amount = contact.getInteger("MemberCount");
             JSONArray array = contact.getJSONArray("MemberList");
             friendMap = new HashMap<String, String>();
-            for (int i=0;i<array.size();i++) {
+            for (int i = 0; i < array.size(); i++) {
                 JSONObject member = array.getJSONObject(i);
                 String userName = member.getString("UserName");
                 String remarkName = member.getString("RemarkName");
-                if(remarkName==null||"".equals(remarkName)){
+                if (remarkName == null || "".equals(remarkName)) {
                     continue;
                 }
-                friendMap.put(userName,remarkName);
+                friendMap.put(userName, remarkName);
             }
             System.out.println(ret);
         } catch (IOException e) {
@@ -294,11 +293,11 @@ public class WXBot implements  Runnable{
         return true;
     }
 
-    public void sendMessage(String uid,String content) throws IOException {
-        String url = baseUrl + String.format("/webwxsendmsg?pass_ticket=%s",passTicket);
+    public void sendMessage(String uid, String content) throws IOException {
+        String url = baseUrl + String.format("/webwxsendmsg?pass_ticket=%s", passTicket);
         Random random = new Random();
 
-        String msgId = System.currentTimeMillis()+(""+random.nextDouble()).substring(0,5).replace(".","");
+        String msgId = System.currentTimeMillis() + ("" + random.nextDouble()).substring(0, 5).replace(".", "");
         JSONObject params = new JSONObject();
 
         JSONObject baseRequest = new JSONObject();
@@ -307,39 +306,35 @@ public class WXBot implements  Runnable{
         baseRequest.put("Skey", skey);
         baseRequest.put("DeviceID", device_id);
 
-        params.put("BaseRequest",baseRequest);
+        params.put("BaseRequest", baseRequest);
 
-        params.put("Scene",0);
+        params.put("Scene", 0);
 
         JSONObject msg = new JSONObject();
-        msg.put("Type",1);
-        msg.put("Content",content);
-        msg.put("FromUserName",user.getString("UserName"));
-        msg.put("ToUserName",uid);
-        msg.put("LocalID",msgId);
-        msg.put("ClientMsgId",msgId);
+        msg.put("Type", 1);
+        msg.put("Content", content);
+        msg.put("FromUserName", user.getString("UserName"));
+        msg.put("ToUserName", uid);
+        msg.put("LocalID", msgId);
+        msg.put("ClientMsgId", msgId);
 
-        params.put("Msg",msg);
+        params.put("Msg", msg);
 
-        client.post(url,params);
+        client.post(url, params);
 
     }
 
 
-
-    public  void getReply(String msg){
+    public void getReply(String msg) {
     }
 
     public void run() {
 
         try {
-//            String uuid = getUUID();
-//            System.out.println(uuid);
-//
-//            generateQRCode(uuid);
+
             String dirUrl = wait4Login(uuid);
             System.out.println(dirUrl);
-            if(dirUrl == null){
+            if (dirUrl == null) {
                 return;
             }
             login(dirUrl);
@@ -347,15 +342,15 @@ public class WXBot implements  Runnable{
             statusNotify();
             getContact();
         } catch (IOException e) {
-            LOG.error("error:{}",e.getCause());
+            LOG.error("error:{}", e.getCause());
             e.printStackTrace();
             return;
         } catch (InterruptedException e) {
-            LOG.error("error:{}",e.getCause());
+            LOG.error("error:{}", e.getCause());
             e.printStackTrace();
             return;
         } catch (DocumentException e) {
-            LOG.error("error:{}",e.getCause());
+            LOG.error("error:{}", e.getCause());
             e.printStackTrace();
             return;
         }
@@ -374,46 +369,21 @@ public class WXBot implements  Runnable{
                     }
 
                 } else if (ret[0] == 1100) {
-                    LOG.info("user offline,user info:{}",user);
+                    LOG.info("user offline,user info:{}", user);
                     break;
                 }
             } catch (IOException e) {
-                LOG.error("error:{}",e.getCause());
+                LOG.error("error:{}", e.getCause());
                 e.printStackTrace();
                 break;
             }
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                LOG.error("error:{}",e.getCause());
+                LOG.error("error:{}", e.getCause());
                 e.printStackTrace();
                 break;
             }
         }
     }
-//
-//    public static void main(String args[]) {
-//        WXBot login = new WXBot();
-//        try {
-//            String uuid = login.getUUID();
-//            System.out.println(uuid);
-//
-//            login.generateQRCode(uuid);
-//            String dirUrl = login.wait4Login(uuid);
-//            System.out.println(dirUrl);
-//            login.login(dirUrl);
-//            login.init();
-//            login.statusNotify();
-//            login.getContact();
-//            new Thread(login).start();
-//            //        login.procMsg();
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        } catch (DocumentException e) {
-//            e.printStackTrace();
-//        }
-//    }
 }

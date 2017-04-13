@@ -6,7 +6,10 @@ import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.StringRequestEntity;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Created by hanson on 2017/1/13.
@@ -68,6 +71,7 @@ public class HttpClient2 {
         String ans = new String(body,"utf8");
         return ans;
     }
+
     private String getCookieStr(){
         Cookie[] cookies = state.getCookies();
         StringBuffer sb = new StringBuffer();
@@ -81,4 +85,5 @@ public class HttpClient2 {
         }
         return sb.toString();
     }
+
 }
