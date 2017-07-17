@@ -31,7 +31,7 @@ public class TuLingReply extends WXBot {
         client = new HttpClient2();
 //        client =  HttpClient2.getInstance();
         replySet = new HashSet<String>();
-        setBack = "[阿微]";
+        setBack = "";
     }
 
     private JSONObject getBaseRequest(){
@@ -98,7 +98,11 @@ public class TuLingReply extends WXBot {
                                 callBack = "机器人已关闭";
                                 uid = obj.getString("ToUserName");
                             }else if(content.contains("设置昵称")){
-                                setBack = content.replace("设置昵称","");
+                                setBack = String.format("[%s]",content.replace("设置昵称",""));
+                            }else if(content.startsWith("骂他")){
+
+                            }else if(content.startsWith("撩她")){
+
                             }
 
                         }else if(replySet.contains(uid)){
